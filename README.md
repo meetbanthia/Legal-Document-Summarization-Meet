@@ -5,7 +5,7 @@ The main objective of the project is to develop a system that can automatically 
 
 Structure of our directory:
  
-Root directory
+    Root directory
     | - README.md
     | - dataset
         | - test-data
