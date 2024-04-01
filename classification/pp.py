@@ -46,15 +46,6 @@ def merge_contiguous_single_chars(strings):
 
     return merged_strings
 
-#Loading mappings that we got from ./analysis/analysis.
-# here is our abbreviations mapping dictionary
-with open('../intermediate/mappings.pickle','rb') as file:
-    mappings = pickle.load(file)
-
-#got these legal stopwords by analysis
-with open('../intermediate/legal_stopwords.pickle','rb') as file:
-    legal_stopwords = pickle.load(file)
-
 def ValidationOfRomanNumerals(string):
     return bool(re.search(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$",string))
 
@@ -95,42 +86,79 @@ def romanToDecimal(str):
             i = i + 1
     return f"{res}"
 
-def preprocess(text):
+def preprocess(text,legal_stopwords,mappings):
+
+    #list of (list of words in a line)
     jgs = []
     for line in text: 
         content = wordpunct_tokenize(line)
+
+        #because of the irregularites in dataset text
         content = merge_contiguous_single_chars(content)
+
+        # append list of words in line
         jgs.append(content)
 
+
+    #stores list of words but no word in a list is an abb
     newj = []
     for lst in jgs:
         j=0
         dummy = []
+
+        #note - doesn't traverse last word
         while j < len(lst)-1:
+
+            #merge word lst[j] and the next word
             temp = remove_spaces_and_periods(lst[j] + lst[j+1])
+
+            #check if the merged word is an abb
+            #note that this merged word needs to be checked first and than the current word alone
             if temp in mappings.keys():
                 dummy.append(mappings[temp])
                 j+=2
+
+            ##Check if this word alone is an abb
             elif lst[j] in mappings.keys():
                 dummy.append(mappings[lst[j]])
                 j+=1
+
+            #not an abbreviation
             else :
                 dummy.append(lst[j])
                 j+=1
+        
+        #for last word present in lst
         if j<len(lst):
             if lst[j] in mappings.keys():
                 dummy.append(mappings[lst[j]])
             else:
                 dummy.append(lst[j])
+
         newj.append(dummy)
     
-    restricted_words = stopwords.words('english')+legal_stopwords
-    extras = ["'t","'ve","'d"," ",""]
+    #merge legal_stopwords as well as english stopwords
+    #we noticed that due to punct tokenize there were 't, 've tokens also which dint make any sense alone
+    restricted_words = stopwords.words('english') + legal_stopwords +["'t","'ve","'d"," ",""]
+
     lst = []
     for j in range(len(newj)):
-        review = [lz.lemmatize(romanToDecimal(word.upper()).lower()) for word in newj[j] if word.lower() not in restricted_words and word.lower() not in extras]
+
+        #convert to roman to decimal
+        #convert all words to lowercase
+        #lemmatize all words
+        review = [lz.lemmatize(romanToDecimal(word.upper()).lower()) for word in newj[j] if word.lower() not in restricted_words]
+
+        #join all words with space in between
         review = " ".join(review)
+
+        #replace all characters other than alphabets and digits with a space
         review = re.sub('[^a-zA-Z0-9]',' ', review)
+
+        #replaces one or more consecutive spaces with a single space and also strip the sentence from both the sides
         review = (re.sub(' +', ' ', review)).strip()
+
+        #append the sentence to lst if it is has len>0
         if len(review)>0 : lst.append(review)
+        
     return lst
